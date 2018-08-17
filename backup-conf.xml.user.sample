@@ -1,0 +1,16 @@
+<backup>
+   <mtschach>
+   	<documents>
+         <rootPath>c:/Users/mtschach/Documents</rootPath>
+         <files>*</files>
+         <backupName>mtschach-documents</backupName>
+         <exclude></exclude>
+   	</documents>
+   	<data>
+         <rootPath>d:/Data</rootPath>
+         <files>*</files>
+         <backupName>mtschach-data</backupName>
+         <exclude>*.bak,*.tmp</exclude>
+   	</data>
+   </mtschach>
+</backup>

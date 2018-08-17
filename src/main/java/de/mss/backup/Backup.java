@@ -98,19 +98,19 @@ public class Backup {
          case LINUX:
          case MACOS:
          case UNKNOWN:
-            return "/etc/backup-conf.xml";
+            return "/etc/" + BackupBase.BACKUP_CONFIG_FILENAME;
 
          case WINDOWS:
-            return "C:\\backup-conf.xml";
+            return "C:\\" + BackupBase.BACKUP_CONFIG_FILENAME;
       }
 
-      return "/etc/backup-conf.xml";
+      return "/etc/" + BackupBase.BACKUP_CONFIG_FILENAME;
    }
 
 
    private String getBackupDir(CommandLine cmd) {
       if (Tools.isSet(cmd.getOptionValue("backup-dir")))
-         return cmd.getOptionValue("backup.dir");
+         return cmd.getOptionValue("backup-dir");
 
       switch (OsType.getOsType()) {
          case LINUX:

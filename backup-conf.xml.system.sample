@@ -1,0 +1,17 @@
+<backup>
+   <system>
+      <readUserDirs>J</readUserDirs>
+      <etc>
+         <rootPath>/etc</rootPath>
+         <files>*</files>
+         <backupName>etc</backupName>
+         <exclude></exclude>
+      </etc>
+      <data>
+         <rootPath>/data</rootPath>
+         <files>*</files>
+         <backupName>data</backupName>
+         <exclude></exclude>
+      </data>
+   </system>
+</backup>

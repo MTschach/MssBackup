@@ -24,13 +24,15 @@ import de.mss.utils.os.OsType;
 
 public abstract class BackupBase {
 
-   private BaseLogger logger     = null;
+   public static final String BACKUP_CONFIG_FILENAME = "backup-conf.xml";
 
-   private String     configFile = null;
-   protected String   backupDir  = null;
-   private boolean    fullBackup = false;
+   private BaseLogger         logger                 = null;
 
-   private ConfigFile cfg        = null;
+   private String             configFile             = null;
+   protected String           backupDir              = null;
+   private boolean            fullBackup             = false;
+
+   private ConfigFile         cfg                    = null;
 
 
    public BackupBase() {}
@@ -230,7 +232,7 @@ public abstract class BackupBase {
          if (!f.isDirectory())
             continue;
 
-         File userCfgFile = new File(f.getAbsolutePath() + File.separator + "backup.conf");
+         File userCfgFile = new File(f.getAbsolutePath() + File.separator + BACKUP_CONFIG_FILENAME);
          if (!userCfgFile.exists() || !userCfgFile.isFile())
             continue;
 
