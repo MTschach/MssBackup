@@ -46,6 +46,8 @@ public abstract class BackupBase {
          this.configFile = c;
          this.backupDir = b;
          this.fullBackup = full;
+         
+         new File(this.backupDir).mkdirs();
 
          cfg = new XmlConfigFile(this.configFile);
          cfg = readUserConfigs(cfg);
@@ -113,7 +115,7 @@ public abstract class BackupBase {
       String filename = backupDir
             + File.separator
             + cfg.getValue(key + ".backupName", "backup")
-            + (this.fullBackup ? ".fullbackup." : ".")
+            + (this.fullBackup || getLastFullBackup(cfg, key).getTime() == 0 ? ".fullbackup." : ".")
             + sdf.format(new java.util.Date())
             + "."
             + getFileExtension();
@@ -124,7 +126,7 @@ public abstract class BackupBase {
 
    private Date getLastFullBackup(ConfigFile cfg2, String key) {
       if (this.fullBackup)
-         return null;
+         return new java.util.Date(0);
 
       File backup = new File(this.backupDir);
 

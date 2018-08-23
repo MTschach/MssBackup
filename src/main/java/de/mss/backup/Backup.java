@@ -80,7 +80,6 @@ public class Backup {
       cmdArgs.addOption(archiveType);
 
       CommandLineParser parser = new DefaultParser();
-      //      HelpFormatter formatter = new HelpFormatter();
       CommandLine cmd = parser.parse(cmdArgs, args);
 
       this.fullBackup = cmd.hasOption("full-backup");
