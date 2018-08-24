@@ -1,5 +1,7 @@
 package de.mss.backup;
 
+import java.util.logging.Level;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -7,6 +9,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+import de.mss.logging.BaseLogger;
 import de.mss.utils.Tools;
 import de.mss.utils.os.OsType;
 
@@ -16,6 +19,7 @@ public class Backup {
    private String  backupDir   = null;
    private boolean fullBackup  = false;
    private String  archiveType = null;
+   private Level   logLevel    = BaseLogger.getLevelInfo();
 
 
    public Backup(String[] args) {
@@ -54,6 +58,7 @@ public class Backup {
       }
 
       if (backup != null) {
+         backup.setLoglevel(this.logLevel);
          backup.doBackup(this.configFile, this.backupDir, this.fullBackup);
       }
 
@@ -77,6 +82,15 @@ public class Backup {
 
       Option archiveType = new Option("a", "archive", true, "backup directory");
       archiveType.setRequired(false);
+
+      Option debug = new Option("dd", "debug", false, "debug info");
+      debug.setRequired(false);
+      cmdArgs.addOption(debug);
+
+      Option verbose = new Option("vv", "verbose", false, "be verbose");
+      verbose.setRequired(false);
+      cmdArgs.addOption(verbose);
+
       cmdArgs.addOption(archiveType);
 
       CommandLineParser parser = new DefaultParser();
@@ -85,7 +99,30 @@ public class Backup {
       this.fullBackup = cmd.hasOption("full-backup");
       this.configFile = getConfigFile(cmd);
       this.backupDir = getBackupDir(cmd);
-      this.archiveType = cmd.getOptionValue("archive");
+      this.archiveType = getArchiveType(cmd);
+
+      if (cmd.hasOption("verbose"))
+         this.logLevel = BaseLogger.getLevelVerbose();
+      else if (cmd.hasOption("debug"))
+         this.logLevel = BaseLogger.getLevelDebug();
+   }
+
+
+   private String getArchiveType(CommandLine cmd) {
+      if (Tools.isSet(cmd.getOptionValue("archive")))
+         return cmd.getOptionValue("archive");
+
+      switch (OsType.getOsType()) {
+         case LINUX:
+         case MACOS:
+         case UNKNOWN:
+            return "tarbz2";
+
+         case WINDOWS:
+            return "zip";
+      }
+
+      return "tgz";
    }
 
 

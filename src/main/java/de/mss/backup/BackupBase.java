@@ -35,18 +35,24 @@ public abstract class BackupBase {
    private ConfigFile         cfg                    = null;
 
 
-   public BackupBase() {}
+   public BackupBase() {
+      getLogger().setLevel(Level.INFO);
+
+   }
+
+
+   public void setLoglevel(Level l) {
+      getLogger().setLevel(l);
+   }
 
 
    public void doBackup(String c, String b, boolean full) {
       String loggingId = Tools.getId(new Throwable());
       try {
-         getLogger().setLevel(Level.INFO);
-
          this.configFile = c;
          this.backupDir = b;
          this.fullBackup = full;
-         
+
          new File(this.backupDir).mkdirs();
 
          cfg = new XmlConfigFile(this.configFile);
@@ -55,7 +61,7 @@ public abstract class BackupBase {
          doBackup(cfg);
       }
       catch (Exception e) {
-         getLogger().log(loggingId, Level.SEVERE, e);
+         getLogger().logError(loggingId, e);
       }
    }
 
@@ -85,7 +91,7 @@ public abstract class BackupBase {
 
    private void workBackup(ConfigFile cfg, String key) throws IOException {
       String loggingId = Tools.getId(new Throwable());
-      getLogger().log(loggingId, Level.INFO, "running Backup for " + key);
+      getLogger().logInfo(loggingId, "running Backup for " + key);
 
       File basePath = new File(cfg.getValue(key + ".rootPath", "."));
       String tmpFilename = backupDir + File.separator + cfg.getValue(key + ".backupName", "backup") + ".tmp." + getFileExtension();
@@ -105,12 +111,12 @@ public abstract class BackupBase {
       outStream.close();
 
       if (bytesWritten <= 0) {
-         getLogger().log(loggingId, Level.INFO, "keine Daten -> Backup wird nicht gespeichert");
+         getLogger().logInfo(loggingId, "keine Daten -> Backup wird nicht gespeichert");
          new File(tmpFilename).delete();
          return;
       }
 
-      getLogger().log(loggingId, Level.INFO, "Backup wird gespichert");
+      getLogger().logInfo(loggingId, "Backup wird gespichert");
       SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd-HHmmss");
       String filename = backupDir
             + File.separator
@@ -152,10 +158,10 @@ public abstract class BackupBase {
                java.util.Date lastModified)
                throws IOException {
 
-      getLogger().log(loggingId, Level.INFO, "working file/directory " + currentPath.getName());
+      getLogger().logDebug(loggingId, "working file/directory " + currentPath.getName());
 
       if (!currentPath.exists()) {
-         getLogger().log(loggingId, Level.INFO, "file/directory " + currentPath.getName() + " does not exists");
+         getLogger().logError(loggingId, "file/directory " + currentPath.getName() + " does not exists");
          return;
       }
 
@@ -193,12 +199,12 @@ public abstract class BackupBase {
          outStream.closeArchiveEntry();
       }
 
-      workBackup(loggingId, outStream, basePath, f, includes, excludes, lastModified);
+      workBackup(loggingId, outStream, basePath, f, new String[] {"*"}, excludes, lastModified);
    }
 
 
    private void backupFile(String loggingId, ArchiveOutputStream outStream, File basePath, File f) throws IOException {
-      getLogger().log(loggingId, Level.INFO, "backing up file " + f.getAbsolutePath());
+      getLogger().logDebug(loggingId, "backing up file " + f.getAbsolutePath());
       String name = f.getAbsolutePath().substring(basePath.getAbsolutePath().length() + 1);
       ArchiveEntry entry = getOutStreamEntry(outStream, f, name);
 
