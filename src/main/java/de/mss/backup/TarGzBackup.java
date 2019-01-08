@@ -11,6 +11,9 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 
+import de.mss.backup.exception.ErrorCodes;
+import de.mss.utils.exception.MssException;
+
 public class TarGzBackup extends BackupBase {
 
    public TarGzBackup() {
@@ -18,16 +21,23 @@ public class TarGzBackup extends BackupBase {
    }
 
 
+   @SuppressWarnings("resource")
    @Override
-   protected ArchiveOutputStream getOutStream(String filename) throws IOException {
-      TarArchiveOutputStream outStream = new TarArchiveOutputStream(
-            new GzipCompressorOutputStream(new BufferedOutputStream(new FileOutputStream(filename))));
-      // TAR has an 8 gig file limit by default, this gets around that
-      outStream.setBigNumberMode(TarArchiveOutputStream.BIGNUMBER_STAR);
-      // TAR originally didn't support long file names, so enable the support for it
-      outStream.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU);
-      outStream.setAddPaxHeadersForNonAsciiNames(true);
+   protected ArchiveOutputStream getOutStream(String filename) throws MssException {
+      TarArchiveOutputStream outStream = null;
+      try {
+         outStream = new TarArchiveOutputStream(
+               new GzipCompressorOutputStream(new BufferedOutputStream(new FileOutputStream(filename))));
+         // TAR has an 8 gig file limit by default, this gets around that
+         outStream.setBigNumberMode(TarArchiveOutputStream.BIGNUMBER_STAR);
+         // TAR originally didn't support long file names, so enable the support for it
+         outStream.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU);
+         outStream.setAddPaxHeadersForNonAsciiNames(true);
 
+      }
+      catch (IOException e) {
+         throw new MssException(ErrorCodes.ERROR_ARCHIVE_FAILED, e, "Failed to create TGZ-Archive");
+      }
       return outStream;
    }
 

@@ -4,7 +4,6 @@ package de.mss.backup;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -15,11 +14,13 @@ import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveOutputStream;
 import org.apache.commons.compress.utils.IOUtils;
 
+import de.mss.backup.exception.ErrorCodes;
 import de.mss.configtools.ConfigFile;
 import de.mss.configtools.XmlConfigFile;
 import de.mss.logging.BaseLogger;
 import de.mss.logging.LoggingFactory;
 import de.mss.utils.Tools;
+import de.mss.utils.exception.MssException;
 import de.mss.utils.os.OsType;
 
 public abstract class BackupBase {
@@ -55,10 +56,10 @@ public abstract class BackupBase {
 
          new File(this.backupDir).mkdirs();
 
-         cfg = new XmlConfigFile(this.configFile);
-         cfg = readUserConfigs(cfg);
+         this.cfg = new XmlConfigFile(this.configFile);
+         this.cfg = readUserConfigs(this.cfg);
 
-         doBackup(cfg);
+         doBackup(this.cfg);
       }
       catch (Exception e) {
          getLogger().logError(loggingId, e);
@@ -66,35 +67,36 @@ public abstract class BackupBase {
    }
 
 
-   private void doBackup(ConfigFile cfg) throws IOException {
+   private void doBackup(ConfigFile config) throws MssException {
 
       ArrayList<String> cfgBackupKeys = new ArrayList<>();
-      for (String key : cfg.getKeys()) {
+      for (String key : config.getKeys()) {
          if (key.startsWith("backup.") && key.endsWith(".files"))
             cfgBackupKeys.add(key.substring(0, key.lastIndexOf(".")));
       }
 
       for (String key : cfgBackupKeys)
-         workBackup(cfg, key);
+         workBackup(config, key);
 
    }
 
 
-   protected abstract ArchiveOutputStream getOutStream(String filename) throws FileNotFoundException, IOException;
+   protected abstract ArchiveOutputStream getOutStream(String filename) throws MssException;
 
 
-   protected abstract ArchiveEntry getOutStreamEntry(ArchiveOutputStream outStream, File file, String name) throws IOException;
+   protected abstract ArchiveEntry getOutStreamEntry(ArchiveOutputStream outStream, File file, String name) throws MssException;
 
 
    protected abstract String getFileExtension();
 
 
-   private void workBackup(ConfigFile cfg, String key) throws IOException {
+   @SuppressWarnings("resource")
+   private void workBackup(ConfigFile config, String key) throws MssException {
       String loggingId = Tools.getId(new Throwable());
       getLogger().logInfo(loggingId, "running Backup for " + key);
 
-      File basePath = new File(cfg.getValue(key + ".rootPath", "."));
-      String tmpFilename = backupDir + File.separator + cfg.getValue(key + ".backupName", "backup") + ".tmp." + getFileExtension();
+      File basePath = new File(config.getValue(key + ".rootPath", "."));
+      String tmpFilename = this.backupDir + File.separator + config.getValue(key + ".backupName", "backup") + ".tmp." + getFileExtension();
       ArchiveOutputStream outStream = getOutStream(tmpFilename);
 
       workBackup(
@@ -102,13 +104,18 @@ public abstract class BackupBase {
             outStream,
             basePath,
             basePath,
-            cfg.getValue(key + ".files", "*").split(","),
-            cfg.getValue(key + ".exclude", "").split(","),
-            getLastFullBackup(cfg, key));
+            config.getValue(key + ".files", "*").split(","),
+            config.getValue(key + ".exclude", "").split(","),
+            getLastFullBackup(key));
 
       long bytesWritten = outStream.getBytesWritten();
-      outStream.flush();
-      outStream.close();
+      try {
+         outStream.flush();
+         outStream.close();
+      }
+      catch (IOException e) {
+         throw new MssException(ErrorCodes.ERROR_ARCHIVE_FAILED, e, "Failed to write Archive");
+      }
 
       if (bytesWritten <= 0) {
          getLogger().logInfo(loggingId, "keine Daten -> Backup wird nicht gespeichert");
@@ -118,10 +125,10 @@ public abstract class BackupBase {
 
       getLogger().logInfo(loggingId, "Backup wird gespichert");
       SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd-HHmmss");
-      String filename = backupDir
+      String filename = this.backupDir
             + File.separator
-            + cfg.getValue(key + ".backupName", "backup")
-            + (this.fullBackup || getLastFullBackup(cfg, key).getTime() == 0 ? ".fullbackup." : ".")
+            + config.getValue(key + ".backupName", "backup")
+            + (this.fullBackup || getLastFullBackup(key).getTime() == 0 ? ".fullbackup." : ".")
             + sdf.format(new java.util.Date())
             + "."
             + getFileExtension();
@@ -130,14 +137,14 @@ public abstract class BackupBase {
    }
 
 
-   private Date getLastFullBackup(ConfigFile cfg2, String key) {
+   private Date getLastFullBackup(String key) {
       if (this.fullBackup)
          return new java.util.Date(0);
 
       File backup = new File(this.backupDir);
 
       long lastBackup = 0;
-      for (File f : backup.listFiles(new FullBackupFileFilter(cfg.getValue(key + ".backupName", "backup")))) {
+      for (File f : backup.listFiles(new FullBackupFileFilter(this.cfg.getValue(key + ".backupName", "backup")))) {
          if (f.lastModified() > lastBackup)
             lastBackup = f.lastModified();
       }
@@ -156,7 +163,7 @@ public abstract class BackupBase {
                String[] includes,
                String[] excludes,
                java.util.Date lastModified)
-               throws IOException {
+               throws MssException {
 
       getLogger().logDebug(loggingId, "working file/directory " + currentPath.getName());
 
@@ -190,38 +197,49 @@ public abstract class BackupBase {
          String[] includes,
          String[] excludes,
          Date lastModified)
-         throws IOException {
+         throws MssException {
       String name = f.getAbsolutePath().substring(basePath.getAbsolutePath().length() + 1);
       ArchiveEntry entry = getOutStreamEntry(outStream, f, name);
 
       if (entry != null) {
-         outStream.putArchiveEntry(entry);
-         outStream.closeArchiveEntry();
+         try {
+            outStream.putArchiveEntry(entry);
+            outStream.closeArchiveEntry();
+         }
+         catch (IOException e) {
+            throw new MssException(ErrorCodes.ERROR_ARCHIVE_FAILED, e, "Failed to archive directory '" + name + "'");
+         }
       }
 
-      workBackup(loggingId, outStream, basePath, f, new String[] {"*"}, excludes, lastModified);
+      workBackup(loggingId, outStream, basePath, f, includes, excludes, lastModified);
    }
 
 
-   private void backupFile(String loggingId, ArchiveOutputStream outStream, File basePath, File f) throws IOException {
+   private void backupFile(String loggingId, ArchiveOutputStream outStream, File basePath, File f) throws MssException {
       getLogger().logDebug(loggingId, "backing up file " + f.getAbsolutePath());
       String name = f.getAbsolutePath().substring(basePath.getAbsolutePath().length() + 1);
       ArchiveEntry entry = getOutStreamEntry(outStream, f, name);
 
       if (entry != null) {
-         outStream.putArchiveEntry(entry);
-         BufferedInputStream in = new BufferedInputStream(new FileInputStream(f));
-         IOUtils.copy(in, outStream);
-         in.close();
+         try {
+            outStream.putArchiveEntry(entry);
+            @SuppressWarnings("resource")
+            BufferedInputStream in = new BufferedInputStream(new FileInputStream(f));
+            IOUtils.copy(in, outStream);
+            in.close();
 
-         outStream.closeArchiveEntry();
+            outStream.closeArchiveEntry();
+         }
+         catch (IOException e) {
+            throw new MssException(ErrorCodes.ERROR_ARCHIVE_FAILED, e, "Failed to archive file '" + name + "'");
+         }
       }
    }
 
 
-   private ConfigFile readUserConfigs(ConfigFile cfg) throws IOException {
-      if (!"J".equalsIgnoreCase(cfg.getValue("backup.system.readUserDirs", "N")))
-         return cfg;
+   private ConfigFile readUserConfigs(ConfigFile config) throws MssException {
+      if (!"J".equalsIgnoreCase(config.getValue("backup.system.readUserDirs", "N")))
+         return config;
 
       File homeDir = null;
       switch (OsType.getOsType()) {
@@ -234,6 +252,8 @@ public abstract class BackupBase {
          case WINDOWS:
             homeDir = new File("C:\\Users");
             break;
+         default:
+            throw new MssException(ErrorCodes.ERROR_UNKNOWN_OS_TYPE, "unkown/not supported OS type '" + OsType.getOsType().getName() + "'");
       }
 
       for (File f : homeDir.listFiles()) {
@@ -244,20 +264,25 @@ public abstract class BackupBase {
          if (!userCfgFile.exists() || !userCfgFile.isFile())
             continue;
 
-         cfg.loadConfig(userCfgFile, true);
+         try {
+            config.loadConfig(userCfgFile, true);
+         }
+         catch (IOException e) {
+            throw new MssException(ErrorCodes.ERROR_FAILED_TO_READ_CONFIG, e, "Failed to read config '" + userCfgFile.getAbsolutePath() + '"');
+         }
       }
 
-      return cfg;
+      return config;
    }
 
 
    private BaseLogger getLogger() {
-      if (logger != null)
-         return logger;
+      if (this.logger != null)
+         return this.logger;
 
-      logger = LoggingFactory.createInstance("system", new BaseLogger("system"));
+      this.logger = LoggingFactory.createInstance("system", new BaseLogger("system"));
 
-      return logger;
+      return this.logger;
    }
 
 

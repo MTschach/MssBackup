@@ -12,6 +12,9 @@ import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
 
+import de.mss.backup.exception.ErrorCodes;
+import de.mss.utils.exception.MssException;
+
 public class ZipBackup extends BackupBase {
 
    public ZipBackup() {
@@ -19,15 +22,19 @@ public class ZipBackup extends BackupBase {
    }
 
 
+   @SuppressWarnings("resource")
    @Override
-   protected ArchiveOutputStream getOutStream(String filename) throws FileNotFoundException {
+   protected ArchiveOutputStream getOutStream(String filename) throws MssException {
       ArchiveOutputStream outStream = null;
       try {
          outStream = new ArchiveStreamFactory()
                .createArchiveOutputStream(ArchiveStreamFactory.ZIP, new BufferedOutputStream(new FileOutputStream(filename)));
       }
       catch (ArchiveException e) {
-         e.printStackTrace();
+         throw new MssException(ErrorCodes.ERROR_ARCHIVE_FAILED, e, "Failed to create ZIP-Archive-Stream");
+      }
+      catch (FileNotFoundException e) {
+         throw new MssException(ErrorCodes.ERROR_ARCHIVE_FAILED, e, "Failed to create ZIP-Archive");
       }
 
       return outStream;

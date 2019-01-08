@@ -10,6 +10,9 @@ import org.apache.commons.compress.archivers.ArchiveOutputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 
+import de.mss.backup.exception.ErrorCodes;
+import de.mss.utils.exception.MssException;
+
 public class TarBackup extends BackupBase {
 
    public TarBackup() {
@@ -17,14 +20,22 @@ public class TarBackup extends BackupBase {
    }
 
 
+   @SuppressWarnings("resource")
    @Override
-   protected ArchiveOutputStream getOutStream(String filename) throws FileNotFoundException {
-      TarArchiveOutputStream outStream = new TarArchiveOutputStream(new BufferedOutputStream(new FileOutputStream(filename)));
-      // TAR has an 8 gig file limit by default, this gets around that
-      outStream.setBigNumberMode(TarArchiveOutputStream.BIGNUMBER_STAR);
-      // TAR originally didn't support long file names, so enable the support for it
-      outStream.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU);
-      outStream.setAddPaxHeadersForNonAsciiNames(true);
+   protected ArchiveOutputStream getOutStream(String filename) throws MssException {
+      TarArchiveOutputStream outStream = null;
+
+      try {
+         outStream = new TarArchiveOutputStream(new BufferedOutputStream(new FileOutputStream(filename)));
+         // TAR has an 8 gig file limit by default, this gets around that
+         outStream.setBigNumberMode(TarArchiveOutputStream.BIGNUMBER_STAR);
+         // TAR originally didn't support long file names, so enable the support for it
+         outStream.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU);
+         outStream.setAddPaxHeadersForNonAsciiNames(true);
+      }
+      catch (FileNotFoundException e) {
+         throw new MssException(ErrorCodes.ERROR_ARCHIVE_FAILED, e, "Failed to create TAR-Archive");
+      }
 
       return outStream;
    }

@@ -16,7 +16,7 @@ public class FullBackupFileFilter implements FileFilter {
 
    @Override
    public boolean accept(File pathname) {
-      if (!pathname.getName().startsWith(filename))
+      if (!pathname.getName().startsWith(this.filename))
          return false;
 
       if (!pathname.getName().contains("fullbackup"))
