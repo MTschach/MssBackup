@@ -29,11 +29,11 @@ public abstract class BackupBase {
 
    private BaseLogger         logger                 = null;
 
-   private String             configFile             = null;
+   protected String           configFile             = null;
    protected String           backupDir              = null;
-   private boolean            fullBackup             = false;
+   protected boolean          fullBackup             = false;
 
-   private ConfigFile         cfg                    = null;
+   protected ConfigFile       cfg                    = null;
 
 
    public BackupBase() {
@@ -47,7 +47,7 @@ public abstract class BackupBase {
    }
 
 
-   public void doBackup(String c, String b, boolean full) {
+   public void doBackup(String c, String b, boolean full, ConfigFile cfg) {
       String loggingId = Tools.getId(new Throwable());
       try {
          this.configFile = c;
@@ -56,7 +56,10 @@ public abstract class BackupBase {
 
          new File(this.backupDir).mkdirs();
 
-         this.cfg = new XmlConfigFile(this.configFile);
+         if (cfg == null)
+            this.cfg = new XmlConfigFile(this.configFile);
+         else
+            this.cfg = cfg;
          this.cfg = readUserConfigs(this.cfg);
 
          doBackup(this.cfg);
@@ -144,7 +147,7 @@ public abstract class BackupBase {
       File backup = new File(this.backupDir);
 
       long lastBackup = 0;
-      for (File f : backup.listFiles(new FullBackupFileFilter(this.cfg.getValue(key + ".backupName", "backup")))) {
+      for (File f : backup.listFiles(new FullBackupFileFilter(this.cfg.getValue(key + ".backupName", "backup"), getFileExtension()))) {
          if (f.lastModified() > lastBackup)
             lastBackup = f.lastModified();
       }
@@ -283,6 +286,26 @@ public abstract class BackupBase {
       this.logger = LoggingFactory.createInstance("system", new BaseLogger("system"));
 
       return this.logger;
+   }
+
+
+   public void setConfigFile(String s) {
+      this.configFile = s;
+   }
+
+
+   public void setFullBackup(boolean f) {
+      this.fullBackup = f;
+   }
+
+
+   public void setBackupDir(String b) {
+      this.backupDir = b;
+   }
+
+
+   public void setCfg(ConfigFile c) {
+      this.cfg = c;
    }
 
 

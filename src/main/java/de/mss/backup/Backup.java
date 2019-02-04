@@ -9,17 +9,21 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+import de.mss.configtools.ConfigFile;
 import de.mss.logging.BaseLogger;
 import de.mss.utils.Tools;
 import de.mss.utils.os.OsType;
 
 public class Backup {
 
-   private String  configFile  = null;
-   private String  backupDir   = null;
-   private boolean fullBackup  = false;
    private String  archiveType = null;
    private Level   logLevel    = BaseLogger.getLevelInfo();
+
+   protected String     configFile  = null;
+   protected String     backupDir   = null;
+   protected boolean    fullBackup  = false;
+
+   protected ConfigFile cfg         = null;
 
 
    public Backup(String[] args) {
@@ -29,7 +33,10 @@ public class Backup {
       catch (ParseException e) {
          e.printStackTrace();
       }
+   }
 
+
+   public void doBackup() {
       BackupBase backup = null;
       switch (this.archiveType) {
          case "tar":
@@ -59,29 +66,48 @@ public class Backup {
 
       if (backup != null) {
          backup.setLoglevel(this.logLevel);
-         backup.doBackup(this.configFile, this.backupDir, this.fullBackup);
+         backup.doBackup(this.configFile, this.backupDir, this.fullBackup, this.cfg);
       }
+   }
 
+
+   public void setArchiveType(String a) {
+      this.archiveType = a;
+   }
+
+
+   public void setLogLevel(Level l) {
+      this.logLevel = l;
+   }
+
+
+   public String getArchiveType() {
+      return this.archiveType;
+   }
+
+
+   public Level getLogLevel() {
+      return this.logLevel;
    }
 
 
    private void init(String[] args) throws ParseException {
       Options cmdArgs = new Options();
 
-      Option configFile = new Option("f", "config-file", true, "configuration file");
-      configFile.setRequired(false);
-      cmdArgs.addOption(configFile);
+      Option confFile = new Option("f", "config-file", true, "configuration file");
+      confFile.setRequired(false);
+      cmdArgs.addOption(confFile);
 
-      Option backupDir = new Option("d", "backup-dir", true, "backup directory");
-      backupDir.setRequired(false);
-      cmdArgs.addOption(backupDir);
+      Option backDir = new Option("d", "backup-dir", true, "backup directory");
+      backDir.setRequired(false);
+      cmdArgs.addOption(backDir);
 
       Option forceFullBackup = new Option("fb", "full-backup", false, "force full backup");
       forceFullBackup.setRequired(false);
       cmdArgs.addOption(forceFullBackup);
 
-      Option archiveType = new Option("a", "archive", true, "backup directory");
-      archiveType.setRequired(false);
+      Option archType = new Option("a", "archive", true, "backup directory");
+      archType.setRequired(false);
 
       Option debug = new Option("dd", "debug", false, "debug info");
       debug.setRequired(false);
@@ -91,7 +117,7 @@ public class Backup {
       verbose.setRequired(false);
       cmdArgs.addOption(verbose);
 
-      cmdArgs.addOption(archiveType);
+      cmdArgs.addOption(archType);
 
       CommandLineParser parser = new DefaultParser();
       CommandLine cmd = parser.parse(cmdArgs, args);
@@ -116,13 +142,12 @@ public class Backup {
          case LINUX:
          case MACOS:
          case UNKNOWN:
+         default:
             return "tarbz2";
 
          case WINDOWS:
             return "zip";
       }
-
-      return "tgz";
    }
 
 
@@ -134,13 +159,12 @@ public class Backup {
          case LINUX:
          case MACOS:
          case UNKNOWN:
+         default:
             return "/etc/" + BackupBase.BACKUP_CONFIG_FILENAME;
 
          case WINDOWS:
             return "C:\\" + BackupBase.BACKUP_CONFIG_FILENAME;
       }
-
-      return "/etc/" + BackupBase.BACKUP_CONFIG_FILENAME;
    }
 
 
@@ -152,17 +176,56 @@ public class Backup {
          case LINUX:
          case MACOS:
          case UNKNOWN:
+         default:
             return "/var/backup";
 
          case WINDOWS:
             return "C:\\Backup";
       }
+   }
 
-      return "/var/backup";
+
+   public String getConfigFile() {
+      return this.configFile;
+   }
+
+
+   public void setConfigFile(String s) {
+      this.configFile = s;
+   }
+
+
+   public boolean getFullBackup() {
+      return this.fullBackup;
+   }
+
+
+   public void setFullBackup(boolean f) {
+      this.fullBackup = f;
+   }
+
+
+   public String getBackupDir() {
+      return this.backupDir;
+   }
+
+
+   public void setBackupDir(String b) {
+      this.backupDir = b;
+   }
+
+
+   public ConfigFile getCfg() {
+      return this.cfg;
+   }
+
+
+   public void setCfg(ConfigFile c) {
+      this.cfg = c;
    }
 
 
    public static void main(String[] args) {
-      new Backup(args);
+      new Backup(args).doBackup();
    }
 }
