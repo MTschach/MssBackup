@@ -22,7 +22,7 @@ public class FullBackupFileFilterTest extends TestCase {
 
    @Test
    public void testOnlyIncludes() {
-      FullBackupFileFilter bff = new FullBackupFileFilter("documents");
+      FullBackupFileFilter bff = new FullBackupFileFilter("documents", "tar");
 
       assertFalse(this.files[0].getName(), bff.accept(this.files[0]));
       assertTrue(this.files[1].getName(), bff.accept(this.files[1]));
