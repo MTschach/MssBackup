@@ -1,29 +1,44 @@
 package de.mss.backup;
 
-import java.util.logging.Level;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import de.mss.configtools.ConfigFile;
-import de.mss.logging.BaseLogger;
 import de.mss.utils.Tools;
 import de.mss.utils.os.OsType;
 
 public class Backup {
 
    private String  archiveType = null;
-   private Level   logLevel    = BaseLogger.getLevelInfo();
 
    protected String     configFile  = null;
    protected String     backupDir   = null;
    protected boolean    fullBackup  = false;
 
    protected ConfigFile cfg         = null;
+
+   private Level        logLevel    = Level.INFO;
+   private static volatile Logger logger      = null;
+   private static String          loggerName  = "Backup";
+
+
+   protected static Logger getLogger() {
+      if (logger != null)
+         return logger;
+
+      if (!Tools.isSet(Backup.loggerName))
+         Backup.loggerName = "default";
+
+      logger = LogManager.getLogger(Backup.loggerName);
+      return logger;
+   }
 
 
    public Backup(String[] args) {
@@ -40,23 +55,23 @@ public class Backup {
       BackupBase backup = null;
       switch (this.archiveType) {
          case "tar":
-            backup = new TarBackup();
+            backup = new TarBackup(Backup.loggerName);
             break;
 
          case "targz":
-            backup = new TarGzBackup();
+            backup = new TarGzBackup(Backup.loggerName);
             break;
 
          case "tgz":
-            backup = new TgzBackup();
+            backup = new TgzBackup(Backup.loggerName);
             break;
 
          case "tarbz2":
-            backup = new TarBzip2Backup();
+            backup = new TarBzip2Backup(Backup.loggerName);
             break;
 
          case "zip":
-            backup = new ZipBackup();
+            backup = new ZipBackup(Backup.loggerName);
             break;
 
          default:
@@ -65,9 +80,19 @@ public class Backup {
       }
 
       if (backup != null) {
-         backup.setLoglevel(this.logLevel);
          backup.doBackup(this.configFile, this.backupDir, this.fullBackup, this.cfg);
       }
+   }
+
+
+   public void setLogLevel(Level l) {
+      this.logLevel = l;
+      org.apache.logging.log4j.core.config.Configurator.setRootLevel(l);
+   }
+
+
+   public Level getLogLevel() {
+      return this.logLevel;
    }
 
 
@@ -76,18 +101,8 @@ public class Backup {
    }
 
 
-   public void setLogLevel(Level l) {
-      this.logLevel = l;
-   }
-
-
    public String getArchiveType() {
       return this.archiveType;
-   }
-
-
-   public Level getLogLevel() {
-      return this.logLevel;
    }
 
 
@@ -128,9 +143,11 @@ public class Backup {
       this.archiveType = getArchiveType(cmd);
 
       if (cmd.hasOption("verbose"))
-         this.logLevel = BaseLogger.getLevelVerbose();
+         this.logLevel = Level.ALL;
       else if (cmd.hasOption("debug"))
-         this.logLevel = BaseLogger.getLevelDebug();
+         this.logLevel = Level.DEBUG;
+
+      setLogLevel(this.logLevel);
    }
 
 

@@ -8,17 +8,16 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.logging.Level;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveOutputStream;
 import org.apache.commons.compress.utils.IOUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import de.mss.backup.exception.ErrorCodes;
 import de.mss.configtools.ConfigFile;
 import de.mss.configtools.XmlConfigFile;
-import de.mss.logging.BaseLogger;
-import de.mss.logging.LoggingFactory;
 import de.mss.utils.Tools;
 import de.mss.utils.exception.MssException;
 import de.mss.utils.os.OsType;
@@ -27,7 +26,6 @@ public abstract class BackupBase {
 
    public static final String BACKUP_CONFIG_FILENAME = "backup-conf.xml";
 
-   private BaseLogger         logger                 = null;
 
    protected String           configFile             = null;
    protected String           backupDir              = null;
@@ -35,19 +33,30 @@ public abstract class BackupBase {
 
    protected ConfigFile       cfg                    = null;
 
+   private static String          loggerName = null;
+   private static volatile Logger logger     = null;
 
-   public BackupBase() {
-      getLogger().setLevel(Level.INFO);
 
+   protected static Logger getLogger() {
+      if (logger != null)
+         return logger;
+
+      if (!Tools.isSet(BackupBase.loggerName))
+         BackupBase.loggerName = "default";
+
+      logger = LogManager.getLogger(BackupBase.loggerName);
+      return logger;
    }
 
 
-   public void setLoglevel(Level l) {
-      getLogger().setLevel(l);
+
+
+   public BackupBase(String logName) {
+      BackupBase.loggerName = logName;
    }
 
 
-   public void doBackup(String c, String b, boolean full, ConfigFile cfg) {
+   public void doBackup(String c, String b, boolean full, ConfigFile cfgFile) {
       String loggingId = Tools.getId(new Throwable());
       try {
          this.configFile = c;
@@ -56,16 +65,16 @@ public abstract class BackupBase {
 
          new File(this.backupDir).mkdirs();
 
-         if (cfg == null)
+         if (cfgFile == null)
             this.cfg = new XmlConfigFile(this.configFile);
          else
-            this.cfg = cfg;
+            this.cfg = cfgFile;
          this.cfg = readUserConfigs(this.cfg);
 
          doBackup(this.cfg);
       }
       catch (Exception e) {
-         getLogger().logError(loggingId, e);
+         getLogger().error("<" + loggingId + ">", e);
       }
    }
 
@@ -96,7 +105,7 @@ public abstract class BackupBase {
    @SuppressWarnings("resource")
    private void workBackup(ConfigFile config, String key) throws MssException {
       String loggingId = Tools.getId(new Throwable());
-      getLogger().logInfo(loggingId, "running Backup for " + key);
+      getLogger().info("<" + loggingId + "> running Backup for " + key);
 
       File basePath = new File(config.getValue(key + ".rootPath", "."));
       String tmpFilename = this.backupDir + File.separator + config.getValue(key + ".backupName", "backup") + ".tmp." + getFileExtension();
@@ -121,12 +130,12 @@ public abstract class BackupBase {
       }
 
       if (bytesWritten <= 0) {
-         getLogger().logInfo(loggingId, "keine Daten -> Backup wird nicht gespeichert");
+         getLogger().info("<" + loggingId + "> keine Daten -> Backup wird nicht gespeichert");
          new File(tmpFilename).delete();
          return;
       }
 
-      getLogger().logInfo(loggingId, "Backup wird gespichert");
+      getLogger().info("<" + loggingId + "> Backup wird gespichert");
       SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd-HHmmss");
       String filename = this.backupDir
             + File.separator
@@ -168,10 +177,10 @@ public abstract class BackupBase {
                java.util.Date lastModified)
                throws MssException {
 
-      getLogger().logDebug(loggingId, "working file/directory " + currentPath.getName());
+      getLogger().debug("<" + loggingId + "> working file/directory " + currentPath.getName());
 
       if (!currentPath.exists()) {
-         getLogger().logError(loggingId, "file/directory " + currentPath.getName() + " does not exists");
+         getLogger().error("<" + loggingId + "> file/directory " + currentPath.getName() + " does not exists");
          return;
       }
 
@@ -219,7 +228,7 @@ public abstract class BackupBase {
 
 
    private void backupFile(String loggingId, ArchiveOutputStream outStream, File basePath, File f) throws MssException {
-      getLogger().logDebug(loggingId, "backing up file " + f.getAbsolutePath());
+      getLogger().debug("<" + loggingId + "> backing up file " + f.getAbsolutePath());
       String name = f.getAbsolutePath().substring(basePath.getAbsolutePath().length() + 1);
       ArchiveEntry entry = getOutStreamEntry(outStream, f, name);
 
@@ -276,16 +285,6 @@ public abstract class BackupBase {
       }
 
       return config;
-   }
-
-
-   private BaseLogger getLogger() {
-      if (this.logger != null)
-         return this.logger;
-
-      this.logger = LoggingFactory.createInstance("system", new BaseLogger("system"));
-
-      return this.logger;
    }
 
 

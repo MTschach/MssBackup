@@ -16,8 +16,8 @@ import de.mss.utils.exception.MssException;
 
 public class TarGzBackup extends BackupBase {
 
-   public TarGzBackup() {
-      super();
+   public TarGzBackup(String logName) {
+      super(logName);
    }
 
 

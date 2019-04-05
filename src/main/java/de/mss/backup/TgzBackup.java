@@ -2,8 +2,8 @@ package de.mss.backup;
 
 public class TgzBackup extends TarGzBackup {
 
-   public TgzBackup() {
-      super();
+   public TgzBackup(String logName) {
+      super(logName);
    }
 
 

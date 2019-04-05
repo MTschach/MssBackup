@@ -17,8 +17,8 @@ import de.mss.utils.exception.MssException;
 
 public class ZipBackup extends BackupBase {
 
-   public ZipBackup() {
-      super();
+   public ZipBackup(String logName) {
+      super(logName);
    }
 
 

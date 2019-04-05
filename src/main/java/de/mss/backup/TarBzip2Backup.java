@@ -16,8 +16,8 @@ import de.mss.utils.exception.MssException;
 
 public class TarBzip2Backup extends BackupBase {
 
-   public TarBzip2Backup() {
-      super();
+   public TarBzip2Backup(String logName) {
+      super(logName);
    }
 
 
